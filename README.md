@@ -1,6 +1,6 @@
 # vortex client
 
-A lightweight async Rust client for the [vx API](https://api.vx.tools), designed to fetch validator voting and income leaderboard data
+A lightweight async Rust client for the [vx API](https://app.vx.tools), designed to fetch validator voting and income leaderboard data
 
 ## Features
 
