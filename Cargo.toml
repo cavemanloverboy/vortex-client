@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "client",
+    "types",
+]
+resolver = "2"
+
+[workspace.dependencies]
+reqwest = "0.12.15"
+tokio = "1.44.2"
+vortex-client = { path = "client" }
+vortex-sdk = { path = "sdk" }
+vortex-types = { path = "types" }
