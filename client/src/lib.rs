@@ -1,5 +1,5 @@
 use reqwest::Client as HttpClient;
-use vortex_types::{income::VotingIncome, voting::VotingLeaderboard};
+use vortex_types::{income::IncomeLeaderboard, voting::VotingLeaderboard};
 
 #[derive(Debug, Clone)]
 pub struct VxClient {
@@ -22,33 +22,71 @@ impl VxClient {
         }
     }
 
-    pub async fn fetch_voting_leaderboard(&self) -> Result<VotingLeaderboard, reqwest::Error> {
+    pub async fn fetch_voting_leaderboard(
+        &self,
+        epoch: Option<u64>,
+    ) -> Result<VotingLeaderboard, reqwest::Error> {
         let url = format!("{}/epochs/leaderboard/voting", self.base_url);
+
+        let body = match epoch {
+            Some(e) => format!(r#"{{"epoch":{}}}"#, e),
+            None => "{}".to_string(),
+        };
+
         let res = self
             .http
-            .post(url)
+            .post(&url)
             .header("Content-Type", "application/json")
-            .body("{}")
+            .body(body)
             .send()
             .await?
             .error_for_status()?;
 
-        let records = res.json::<VotingLeaderboard>().await?;
-        Ok(records)
+        let mut voting_leaderboard = res.json::<VotingLeaderboard>().await?;
+        voting_leaderboard
+            .records
+            .sort_by_key(|r| std::cmp::Reverse(r.earned_credits));
+
+        for (i, record) in voting_leaderboard.records.iter_mut().enumerate() {
+            record.rank = i as u64;
+        }
+
+        Ok(voting_leaderboard)
     }
 
-    pub async fn fetch_income_leaderboard(&self) -> Result<VotingIncome, reqwest::Error> {
+    pub async fn fetch_income_leaderboard(
+        &self,
+        epoch: Option<u64>,
+    ) -> Result<IncomeLeaderboard, reqwest::Error> {
         let url = format!("{}/epochs/leaderboard/income", self.base_url);
+
+        let body = match epoch {
+            Some(e) => format!(r#"{{"epoch":{}}}"#, e),
+            None => "{}".to_string(),
+        };
+
         let res = self
             .http
             .post(url)
             .header("Content-Type", "application/json")
-            .body("{}")
+            .body(body)
             .send()
             .await?
             .error_for_status()?;
 
-        let income = res.json::<VotingIncome>().await?;
-        Ok(income)
+        let mut income_leaderboard = res.json::<IncomeLeaderboard>().await?;
+        income_leaderboard.records.sort_by_key(|record| {
+            std::cmp::Reverse(
+                (record.total_income.base_fees + record.total_income.priority_fees)
+                    .checked_div(record.total_slots)
+                    .unwrap_or(0),
+            )
+        });
+
+        for (i, record) in income_leaderboard.records.iter_mut().enumerate() {
+            record.rank = i as u64;
+        }
+
+        Ok(income_leaderboard)
     }
 }
